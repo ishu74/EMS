@@ -1,0 +1,319 @@
+import React, { useEffect, useState } from 'react';
+import DataTable from 'react-data-table-component';
+import { getTodos } from '../application/selector/todoSelector';
+import { useDispatch, useSelector } from 'react-redux';
+import { Button, Form, InputGroup, Offcanvas } from 'react-bootstrap';
+import { addTodo, fetchTodos, removeTodo } from '../application/actions/todoAction';
+import { customStyles, theme } from '../style/DataTableStyle';
+import { FaSearch, FaPen } from 'react-icons/fa';
+
+const DataTableTodo = () => {
+  const dispatch = useDispatch();
+  const todos = useSelector(getTodos);
+  const [searchText, setSearchText] = useState('');
+  const [showSidebar, setShowSidebar] = useState(false);
+
+  // Set default image URL or Base64 string for the profile picture
+  const defaultImage = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA" + 
+                        "AAAFCAYAAACNbyblAAAAHElEQVQI12P4" + 
+                        "//8/w38GIAXD4SOv+fP7P8cwr5AwgABAgD/f+krCV9M6IAAAAASUVORK5CYII=";
+
+  const [taskDetails, setTaskDetails] = useState({
+    title: '',
+    description: '',
+    dueDate: '',
+    image: defaultImage, // Set default image here
+  });
+
+  const columns = [
+    {
+      name: "Title -",
+      selector: (row) => row.title,
+      sortable: true,
+      sortFunction: (rowA, rowB) => {
+        const titleA = rowA.title.toLowerCase();
+        const titleB = rowB.title.toLowerCase();
+        if (titleA < titleB) return -1;
+        if (titleA > titleB) return 1;
+        return 0;
+      }
+    },
+    {
+      name: "Description",
+      selector: (row) => row.description
+    },
+    {
+      name: "Due Date -",
+      selector: (row) => row.dueDate,
+      sortable: true,
+      sortFunction: (rowA, rowB) => {
+        const dateA = new Date(rowA.dueDate);
+        const dateB = new Date(rowB.dueDate);
+        return dateA - dateB;
+      },
+    },
+    {
+      name: 'Image',
+      selector: (row) => row.image, // Access the image field in the row data
+      cell: (row) => (
+        <img
+          src={row.image || defaultImage} // Use the default image if no image exists
+          alt="Task"
+          style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '50%' }}
+        />
+      ),
+    },
+    {
+      name: 'Actions',
+      cell: (row) => (
+        <>
+          <Button
+            variant="dark"
+            size="sm"
+            onClick={() => handleRemove(row.id)}
+            className="me-2"
+          >
+            Delete
+          </Button>
+        </>
+      ),
+    },
+  ];
+
+  const filteredTodos = todos.filter((todo) =>
+    todo.title.toLowerCase().includes(searchText.toLowerCase()) ||
+    todo.description.toLowerCase().includes(searchText.toLowerCase()) ||
+    todo.dueDate.toLowerCase().includes(searchText.toLowerCase())
+  );
+
+  const handleRemove = (id) => {
+    if (window.confirm('Are you sure you want to remove this todo?')) {
+      dispatch(removeTodo(id));
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setTaskDetails((prevState) => ({
+      ...prevState,
+      [name]: value,
+    }));
+  };
+
+  // Function to handle image file change and convert to Base64
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setTaskDetails({
+          ...taskDetails,
+          image: reader.result // Update with new Base64 string
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAddTask = () => {
+    if (taskDetails.title && taskDetails.description && taskDetails.dueDate) {
+      dispatch(addTodo(taskDetails)); // Pass taskDetails, including Base64 image
+      setShowSidebar(false);
+      setTaskDetails({ title: '', description: '', dueDate: '', image: defaultImage }); // Reset with default image
+    } else {
+      alert('Please fill out all fields.');
+    }
+  };
+
+  return (
+    <div className={`container my-4 ${showSidebar ? 'blurred' : ''}`}>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h2>Task Listings</h2>
+
+        <InputGroup style={{ maxWidth: '350px' }}>
+          <Button
+            variant="success"
+            className="me-4"
+            onClick={() => setShowSidebar(true)}
+          >
+            Add Task
+          </Button>
+          <InputGroup.Text>
+            <FaSearch size={12} />
+          </InputGroup.Text>
+          <Form.Control
+            type="text"
+            placeholder="Search"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            size="sm"
+            className="form-control-sm"
+          />
+        </InputGroup>
+      </div>
+
+      <DataTable
+        columns={columns}
+        data={filteredTodos}
+        pagination
+        highlightOnHover
+        striped
+        responsive
+        customStyles={customStyles}
+        theme={theme}
+        defaultSortFieldId={3 || 1}
+        defaultSortAsc={true}
+      />
+
+      <Offcanvas show={showSidebar} onHide={() => setShowSidebar(false)} placement="end">
+        <Offcanvas.Header closeButton>
+          <Offcanvas.Title>Add Task</Offcanvas.Title>
+        </Offcanvas.Header>
+        <Offcanvas.Body>
+          <Form>
+            {/* Image Upload */}
+            <Form.Group className="mb-3">
+              <Form.Label>Upload Image</Form.Label>
+              <div className="profile-picture-container">
+                <div
+                  style={{
+                    position: 'relative',
+                    width: '120px',
+                    height: '120px',
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    background: '#f0f0f0',
+                  }}
+                >
+                  <img
+                    src={taskDetails.image}
+                    alt="Profile"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      borderRadius: '50%', // Ensures the image is a circle
+                    }}
+                  />
+                  <label
+                    htmlFor="image-upload"
+                    style={{
+                      position: 'absolute',
+                      bottom: '5px',
+                      right: '5px',
+                      background: 'rgba(0, 0, 0, 0.6)',
+                      color: 'white',
+                      padding: '5px',
+                      borderRadius: '50%',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <FaPen />
+                  </label>
+                  <input
+                    id="image-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    style={{ display: 'none' }}
+                  />
+                </div>
+              </div>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Title</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="Enter title"
+                name="title"
+                value={taskDetails.title}
+                onChange={handleInputChange}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Description</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                placeholder="Enter description"
+                name="description"
+                value={taskDetails.description}
+                onChange={handleInputChange}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Due Date</Form.Label>
+              <Form.Control
+                type="date"
+                name="dueDate"
+                value={taskDetails.dueDate}
+                onChange={handleInputChange}
+              />
+            </Form.Group>
+
+            <Button variant="primary" className="mx-3" onClick={handleAddTask}>
+              Add Task
+            </Button>
+          </Form>
+        </Offcanvas.Body>
+      </Offcanvas>
+    </div>
+  );
+};
+
+export default DataTableTodo;
+
+
+
+////center code
+
+<Form.Group className="mb-3 text-center">
+  <Form.Label>Upload Image</Form.Label>
+  <div
+    style={{
+      position: 'relative',
+      width: '120px',
+      height: '120px',
+      margin: '0 auto', // Center the container
+      borderRadius: '50%',
+      overflow: 'hidden',
+      background: '#f0f0f0',
+    }}
+  >
+    <img
+      src={taskDetails.image}
+      alt="Profile"
+      style={{
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover',
+        borderRadius: '50%', // Ensures the image is a circle
+      }}
+    />
+    <label
+      htmlFor="image-upload"
+      style={{
+        position: 'absolute',
+        bottom: '5px',
+        right: '5px',
+        background: 'rgba(0, 0, 0, 0.6)',
+        color: 'white',
+        padding: '5px',
+        borderRadius: '50%',
+        cursor: 'pointer',
+      }}
+    >
+      <FaPen />
+    </label>
+    <input
+      id="image-upload"
+      type="file"
+      accept="image/*"
+      onChange={handleImageChange}
+      style={{ display: 'none' }}
+    />
+  </div>
+</Form.Group>

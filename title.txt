@@ -1,0 +1,1281 @@
+  //     cleaner
+        //     clickableRows
+        //     columnFilter
+        // columnSorter
+
+          {/* <Form.Group className="mb-3 ">
+        <Form.Control
+          type="text"
+          placeholder="Search"
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+        />
+      </Form.Group> */}
+
+       return (
+    <div className={`container my-4 ${showSidebar ? 'blurred' : ''}`}>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h2>Task Listings</h2>
+
+        <InputGroup style={{ maxWidth: '350px' }}>
+          <Button
+            variant="success"
+            className="me-2"
+            onClick={() => setShowSidebar(true)}
+          >
+            Add Task
+          </Button>
+          <InputGroup.Text>
+            <FaSearch size={12} />
+          </InputGroup.Text>
+          <Form.Control
+            type="text"
+            placeholder="Search"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            size="sm"
+            className="form-control-sm"
+          />
+        </InputGroup>
+      </div>
+
+      <DataTable
+        columns={columns}
+        data={filteredTodos}
+        pagination
+        highlightOnHover
+        striped
+        responsive
+        customStyles={customStyles}
+        theme={theme}
+        defaultSortFieldId={3 || 1}
+        defaultSortAsc={true}
+      />
+
+      {/* Sidebar for Adding Task */}
+      <Offcanvas show={showSidebar} onHide={() => setShowSidebar(false)} placement="end">
+        <Offcanvas.Header closeButton>
+          <Offcanvas.Title>Add Task</Offcanvas.Title>
+        </Offcanvas.Header>
+        <Offcanvas.Body>
+          <Form>
+            <Form.Group className="mb-3">
+              <Form.Label>Title</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="Enter title"
+                name="title"
+                value={taskDetails.title}
+                onChange={handleInputChange}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Description</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                placeholder="Enter description"
+                name="description"
+                value={taskDetails.description}
+                onChange={handleInputChange}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Due Date</Form.Label>
+              <Form.Control
+                type="date"
+                name="dueDate"
+                value={taskDetails.dueDate}
+                onChange={handleInputChange}
+              />
+            </Form.Group>
+
+            <Button variant="primary" onClick={handleAddTask}>
+              Add Task
+            </Button>
+          </Form>
+        </Offcanvas.Body>
+      </Offcanvas>
+    </div>
+  );
+
+
+
+
+
+  import React, { useEffect, useState } from 'react';
+import DataTable from 'react-data-table-component';
+import { getTodos } from '../application/selector/todoSelector';
+import { useDispatch, useSelector } from 'react-redux';
+import { Button, Form, InputGroup, Offcanvas } from 'react-bootstrap';
+import { addTodo, fetchTodos, removeTodo } from '../application/actions/todoAction';
+import { customStyles, theme } from '../style/DataTableStyle';
+import { FaSearch, FaPen } from 'react-icons/fa';
+
+const DataTableTodo = () => {
+  const dispatch = useDispatch();
+  const todos = useSelector(getTodos);
+  const [searchText, setSearchText] = useState('');
+  const [showSidebar, setShowSidebar] = useState(false);
+
+  // Set default image URL or Base64 string for the profile picture
+  const defaultImage = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTx1dos8LThhwYE3fEciUQeNHD6_w4rL3FPTw&s";
+  
+  const [taskDetails, setTaskDetails] = useState({
+    title: '',
+    description: '',
+    dueDate: '',
+    image: defaultImage, 
+  });
+
+  const columns = [
+    {
+      name: "Title -",
+      selector: (row) => row.title,
+      sortable: true,
+      sortFunction: (rowA, rowB) => {
+        const titleA = rowA.title.toLowerCase();
+        const titleB = rowB.title.toLowerCase();
+        if (titleA < titleB) return -1;
+        if (titleA > titleB) return 1;
+        return 0;
+      }
+    },
+    {
+      name: "Description",
+      selector: (row) => row.description
+    },
+    {
+      name: "Due Date -",
+      selector: (row) => row.dueDate,
+      sortable: true,
+      sortFunction: (rowA, rowB) => {
+        const dateA = new Date(rowA.dueDate);
+        const dateB = new Date(rowB.dueDate);
+        return dateA - dateB;
+      },
+    },
+    {
+      name: 'Image',
+      selector: (row) => row.image, // Access the image field in the row data
+      cell: (row) => (
+        <img
+          src={row.image || defaultImage} // Use the default image if no image exists
+          alt="Task"
+          style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '50%' }}
+        />
+      ),
+    },
+    {
+      name: 'Actions',
+      cell: (row) => (
+        <>
+          <Button
+            variant="dark"
+            size="sm"
+            onClick={() => handleRemove(row.id)}
+            className="me-2"
+          >
+            Delete
+          </Button>
+        </>
+      ),
+    },
+  ];
+
+  const filteredTodos = todos.filter((todo) =>
+    todo.title.toLowerCase().includes(searchText.toLowerCase()) ||
+    todo.description.toLowerCase().includes(searchText.toLowerCase()) ||
+    todo.dueDate.toLowerCase().includes(searchText.toLowerCase())
+  );
+
+  const handleRemove = (id) => {
+    if (window.confirm('Are you sure you want to remove this todo?')) {
+      dispatch(removeTodo(id));
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setTaskDetails((prevState) => ({
+      ...prevState,
+      [name]: value,
+    }));
+  };
+
+  // Function to handle image file change and convert to Base64
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setTaskDetails({
+          ...taskDetails,
+          image: reader.result // Update with new Base64 string
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAddTask = () => {
+    if (taskDetails.title && taskDetails.description && taskDetails.dueDate) {
+      dispatch(addTodo(taskDetails)); // Pass taskDetails, including Base64 image
+      setShowSidebar(false);
+      setTaskDetails({ title: '', description: '', dueDate: '', image: defaultImage }); // Reset with default image
+    } else {
+      alert('Please fill out all fields.');
+    }
+  };
+
+  return (
+    <div className={`container my-4 ${showSidebar ? 'blurred' : ''}`}>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h2>Task Listings</h2>
+
+        <InputGroup style={{ maxWidth: '350px' }}>
+          <Button
+            variant="success"
+            className="me-4"
+            onClick={() => setShowSidebar(true)}
+          >
+            Add Task
+          </Button>
+          <InputGroup.Text>
+            <FaSearch size={12} />
+          </InputGroup.Text>
+          <Form.Control
+            type="text"
+            placeholder="Search"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            size="sm"
+            className="form-control-sm"
+          />
+        </InputGroup>
+      </div>
+
+      <DataTable
+        columns={columns}
+        data={filteredTodos}
+        pagination
+        highlightOnHover
+        striped
+        responsive
+        customStyles={customStyles}
+        theme={theme}
+        defaultSortFieldId={3 || 1}
+        defaultSortAsc={true}
+      />
+
+      <Offcanvas show={showSidebar} onHide={() => setShowSidebar(false)} placement="end">
+        <Offcanvas.Header closeButton>
+          <Offcanvas.Title>Add Task</Offcanvas.Title>
+        </Offcanvas.Header>
+        <Offcanvas.Body>
+          <Form>
+            <Form.Group className="mb-3">
+              <Form.Label>Title</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="Enter title"
+                name="title"
+                value={taskDetails.title}
+                onChange={handleInputChange}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Description</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                placeholder="Enter description"
+                name="description"
+                value={taskDetails.description}
+                onChange={handleInputChange}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Due Date</Form.Label>
+              <Form.Control
+                type="date"
+                name="dueDate"
+                value={taskDetails.dueDate}
+                onChange={handleInputChange}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Upload Image</Form.Label>
+              <div className="profile-picture-container">
+                <div
+                  style={{
+                    position: 'relative',
+                    width: '100px',
+                    height: '100px',
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    background: '#f0f0f0',
+                  }}
+                >
+                  <img
+                    src={taskDetails.image}
+                    alt="Profile"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                    }}
+                  />
+                  <label
+                    htmlFor="image-upload"
+                    style={{
+                      position: 'absolute',
+                      bottom: '5px',
+                      right: '5px',
+                      background: 'rgba(0, 0, 0, 0.6)',
+                      color: 'white',
+                      padding: '5px',
+                      borderRadius: '50%',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <FaPen />
+                  </label>
+                  <input
+                    id="image-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    style={{ display: 'none' }}
+                  />
+                </div>
+              </div>
+            </Form.Group>
+
+            <Button variant="primary" className="mx-3" onClick={handleAddTask}>
+              Add Task
+            </Button>
+          </Form>
+        </Offcanvas.Body>
+      </Offcanvas>
+    </div>
+  );
+};
+
+export default DataTableTodo;
+
+
+
+import React, { useEffect, useState } from 'react';
+import DataTable from 'react-data-table-component';
+import { getTodos } from '../application/selector/todoSelector';
+import { useDispatch, useSelector } from 'react-redux';
+import { Button, Form, InputGroup, Offcanvas } from 'react-bootstrap';
+import { addTodo, fetchTodos, removeTodo } from '../application/actions/todoAction';
+import { customStyles, theme } from '../style/DataTableStyle';
+import { FaSearch, FaPen } from 'react-icons/fa';
+
+const DataTableTodo = () => {
+  const dispatch = useDispatch();
+  const todos = useSelector(getTodos);
+  const [searchText, setSearchText] = useState('');
+  const [showSidebar, setShowSidebar] = useState(false);
+
+  // Set default image URL or Base64 string for the profile picture
+  const defaultImage = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTx1dos8LThhwYE3fEciUQeNHD6_w4rL3FPTw&s";
+
+  const [taskDetails, setTaskDetails] = useState({
+    title: '',
+    description: '',
+    dueDate: '',
+    image: defaultImage, // Set default image here
+  });
+
+  const columns = [
+    {
+      name: "Title -",
+      selector: (row) => row.title,
+      sortable: true,
+      sortFunction: (rowA, rowB) => {
+        const titleA = rowA.title.toLowerCase();
+        const titleB = rowB.title.toLowerCase();
+        if (titleA < titleB) return -1;
+        if (titleA > titleB) return 1;
+        return 0;
+      }
+    },
+    {
+      name: "Description",
+      selector: (row) => row.description
+    },
+    {
+      name: "Due Date -",
+      selector: (row) => row.dueDate,
+      sortable: true,
+      sortFunction: (rowA, rowB) => {
+        const dateA = new Date(rowA.dueDate);
+        const dateB = new Date(rowB.dueDate);
+        return dateA - dateB;
+      },
+    },
+    {
+      name: 'Image',
+      selector: (row) => row.image, // Access the image field in the row data
+      cell: (row) => (
+        <img
+          src={row.image || defaultImage} // Use the default image if no image exists
+          alt="Task"
+          style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '50%' }}
+        />
+      ),
+    },
+    {
+      name: 'Actions',
+      cell: (row) => (
+        <>
+          <Button
+            variant="dark"
+            size="sm"
+            onClick={() => handleRemove(row.id)}
+            className="me-2"
+          >
+            Delete
+          </Button>
+          <Button
+          variant="primary"
+          size="sm"
+          onClick={() => handleEdit(row)}
+        >
+          Edit
+        </Button>
+        </>
+      ),
+    },
+  ];
+  const handleEdit = (task) => {
+    setTaskDetails({
+      title: task.title,
+      description: task.description,
+      dueDate: task.dueDate,
+      image: task.image || defaultImage, 
+    });
+    setShowSidebar(true); 
+  };
+  const filteredTodos = todos.filter((todo) =>
+    todo.title.toLowerCase().includes(searchText.toLowerCase()) ||
+    todo.description.toLowerCase().includes(searchText.toLowerCase()) ||
+    todo.dueDate.toLowerCase().includes(searchText.toLowerCase())
+  );
+
+  const handleRemove = (id) => {
+    if (window.confirm('Are you sure you want to remove this todo?')) {
+      dispatch(removeTodo(id));
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setTaskDetails((prevState) => ({
+      ...prevState,
+      [name]: value,
+    }));
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setTaskDetails({
+          ...taskDetails,
+          image: reader.result 
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAddTask = () => {
+    if (taskDetails.title && taskDetails.description && taskDetails.dueDate) {
+      dispatch(addTodo(taskDetails)); 
+      setShowSidebar(false);
+      setTaskDetails({ title: '', description: '', dueDate: '', image: defaultImage });
+    } else {
+      alert('Please fill out all fields.');
+    }
+  };
+
+  return (
+    <div className={`container my-4 ${showSidebar ? 'blurred' : ''}`}>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h2>Task Listings</h2>
+
+        <InputGroup style={{ maxWidth: '350px' }}>
+          <Button
+            variant="success"
+            className="me-4"
+            onClick={() => setShowSidebar(true)}
+          >
+            Add Task
+          </Button>
+          <InputGroup.Text>
+            <FaSearch size={12} />
+          </InputGroup.Text>
+          <Form.Control
+            type="text"
+            placeholder="Search"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            size="sm"
+            className="form-control-sm"
+          />
+        </InputGroup>
+      </div>
+
+      <DataTable
+        columns={columns}
+        data={filteredTodos}
+        pagination
+        highlightOnHover
+        striped
+        responsive
+        customStyles={customStyles}
+        theme={theme}
+        defaultSortFieldId={3 || 1}
+        defaultSortAsc={true}
+      />
+
+      <Offcanvas show={showSidebar} onHide={() => setShowSidebar(false)} placement="end">
+        <Offcanvas.Header closeButton>
+          <Offcanvas.Title>Add Task</Offcanvas.Title>
+        </Offcanvas.Header>
+        <Offcanvas.Body>
+          <Form>
+            {/* //image upload */}
+            <Form.Group className="mb-3 text-center">
+              <Form.Label>Upload Image</Form.Label>
+              <div className="profile-picture-container">
+                <div
+                  style={{
+                    position: 'relative',
+                    width: '120px',
+                    height: '120px',
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    background: '#f0f0f0',
+                    margin: '0 auto',
+                  }}
+                >
+                  <img
+                    src={taskDetails.image}
+                    alt="Profile"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      borderRadius: '50%', 
+                    }}
+                  />
+                  <label
+                    htmlFor="image-upload"
+                    style={{
+                      position: 'absolute',
+                      bottom: '5px',
+                      right: '5px',
+                      background: 'rgba(0, 0, 0, 0.6)',
+                      color: 'white',
+                      padding: '5px',
+                      borderRadius: '50%',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <FaPen  style={{height:"23px", width:"23px"}}/>
+                  </label>
+                  <input
+                    id="image-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    style={{ display: 'none' }}
+                  />
+                </div>
+              </div>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Title</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="Enter title"
+                name="title"
+                value={taskDetails.title}
+                onChange={handleInputChange}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Description</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                placeholder="Enter description"
+                name="description"
+                value={taskDetails.description}
+                onChange={handleInputChange}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Due Date</Form.Label>
+              <Form.Control
+                type="date"
+                name="dueDate"
+                value={taskDetails.dueDate}
+                onChange={handleInputChange}
+              />
+            </Form.Group>
+
+            <Button variant="primary" className="mx-3" onClick={handleAddTask}>
+              Add Task
+            </Button>
+          </Form>
+        </Offcanvas.Body>
+      </Offcanvas>
+    </div>
+  );
+};
+
+export default DataTableTodo;
+
+
+
+
+
+import React, { useState, useEffect } from 'react';
+import DataTable from 'react-data-table-component';
+import { useDispatch, useSelector } from 'react-redux';
+import { Button, Form, InputGroup, Offcanvas } from 'react-bootstrap';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { customStyles, theme } from '../style/DataTableStyle';
+import { FaSearch } from 'react-icons/fa';
+import { addTodo, fetchTodos, removeTodo, updateTodo } from '../application/actions/todoAction';
+import { getTodos } from '../application/selector/todoSelector';
+
+toast.configure();
+
+const DataTableTodo = () => {
+  const dispatch = useDispatch();
+  const todos = useSelector(getTodos);
+
+  const [searchText, setSearchText] = useState('');
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [taskDetails, setTaskDetails] = useState({
+    id: null,
+    title: '',
+    description: '',
+    dueDate: '',
+  });
+  const [isEditing, setIsEditing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+
+  useEffect(() => {
+    dispatch(fetchTodos());
+  }, [dispatch]);
+
+  const filteredTodos = todos.filter((todo) =>
+    todo.title.toLowerCase().includes(searchText.toLowerCase()) ||
+    todo.description.toLowerCase().includes(searchText.toLowerCase()) ||
+    todo.dueDate.toLowerCase().includes(searchText.toLowerCase())
+  );
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setTaskDetails((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleAddTask = () => {
+    if (taskDetails.title && taskDetails.description && taskDetails.dueDate) {
+      if (isEditing) {
+        dispatch(updateTodo(taskDetails));
+        toast.success('Task updated successfully!', { position: 'top-right' });
+      } else {
+        dispatch(addTodo(taskDetails));
+        toast.success('Task added successfully!', { position: 'top-right' });
+      }
+
+      setShowSidebar(false);
+      setTaskDetails({ id: null, title: '', description: '', dueDate: '' });
+      setIsEditing(false);
+    } else {
+      toast.error('Please fill out all fields.', { position: 'top-right' });
+    }
+  };
+
+  const handleEditTask = (task) => {
+    setTaskDetails(task);
+    setIsEditing(true);
+    setShowSidebar(true);
+  };
+
+  const handleDelete = (id) => {
+    if (isDeleting || deletingId === id) return;
+
+    setIsDeleting(true);
+    setDeletingId(id);
+
+    const toastId = toast.info(
+      <div>
+        <p>Are you sure you want to delete this task?</p>
+        <div className="d-flex justify-content-end">
+          <Button
+            size="sm"
+            variant="danger"
+            className="me-2"
+            onClick={() => {
+              dispatch(removeTodo(id));
+              setIsDeleting(false);
+              setDeletingId(null);
+              toast.dismiss(toastId);
+              toast.success('Task deleted successfully!', { position: 'top-right' });
+            }}
+          >
+            Confirm
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              setIsDeleting(false);
+              setDeletingId(null);
+              toast.dismiss(toastId);
+            }}
+          >
+            Cancel
+          </Button>
+        </div>
+      </div>,
+      { autoClose: false, closeOnClick: false, position: 'top-right' }
+    );
+  };
+
+  const columns = [
+    {
+      name: 'Title',
+      selector: (row) => row.title,
+      sortable: true,
+    },
+    {
+      name: 'Description',
+      selector: (row) => row.description,
+    },
+    {
+      name: 'Due Date',
+      selector: (row) => row.dueDate,
+      sortable: true,
+    },
+    {
+      name: 'Actions',
+      cell: (row) => (
+        <>
+          <Button
+            variant="warning"
+            size="sm"
+            className="me-2"
+            onClick={() => handleEditTask(row)}
+          >
+            Edit
+          </Button>
+          <Button
+            variant="dark"
+            size="sm"
+            onClick={() => handleDelete(row.id)}
+            disabled={isDeleting && deletingId === row.id}
+          >
+            {isDeleting && deletingId === row.id ? 'Deleting...' : 'Delete'}
+          </Button>
+        </>
+      ),
+    },
+  ];
+
+  return (
+    <div className="container my-4">
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h2>Task Listings</h2>
+
+        <InputGroup style={{ maxWidth: '350px' }}>
+          <Button
+            variant="success"
+            className="me-4"
+            onClick={() => {
+              setShowSidebar(true);
+              setTaskDetails({ id: null, title: '', description: '', dueDate: '' });
+              setIsEditing(false);
+            }}
+          >
+            Add Task
+          </Button>
+          <InputGroup.Text>
+            <FaSearch size={12} />
+          </InputGroup.Text>
+          <Form.Control
+            type="text"
+            placeholder="Search"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            size="sm"
+            className="form-control-sm"
+          />
+        </InputGroup>
+      </div>
+
+      <DataTable
+        columns={columns}
+        data={filteredTodos}
+        pagination
+        highlightOnHover
+        striped
+        responsive
+        customStyles={customStyles}
+        theme={theme}
+      />
+
+      <Offcanvas show={showSidebar} onHide={() => setShowSidebar(false)} placement="end">
+        <Offcanvas.Header closeButton>
+          <Offcanvas.Title>{isEditing ? 'Edit Task' : 'Add Task'}</Offcanvas.Title>
+        </Offcanvas.Header>
+        <Offcanvas.Body>
+          <Form>
+            <Form.Group className="mb-3">
+              <Form.Label>Title</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="Enter title"
+                name="title"
+                value={taskDetails.title}
+                onChange={handleInputChange}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Description</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                placeholder="Enter description"
+                name="description"
+                value={taskDetails.description}
+                onChange={handleInputChange}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Due Date</Form.Label>
+              <Form.Control
+                type="date"
+                name="dueDate"
+                value={taskDetails.dueDate}
+                onChange={handleInputChange}
+              />
+            </Form.Group>
+
+            <Button variant="primary" className="mx-3" onClick={handleAddTask}>
+              {isEditing ? 'Update Task' : 'Add Task'}
+            </Button>
+          </Form>
+        </Offcanvas.Body>
+      </Offcanvas>
+    </div>
+  );
+};
+
+export default DataTableTodo;
+
+
+
+import React, { useState } from 'react';
+import DataTable from 'react-data-table-component';
+import { getTodos } from '../application/selector/todoSelector';
+import { useDispatch, useSelector } from 'react-redux';
+import { Button, Form, InputGroup } from 'react-bootstrap';
+import { addTodo, removeTodo, updateTodo } from '../application/actions/todoAction';
+import { customStyles, theme } from '../style/DataTableStyle';
+import { FaSearch } from 'react-icons/fa';
+import { Offcanvas } from 'react-bootstrap';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import 'react-confirm-alert/src/react-confirm-alert.css';
+
+const DataTableTodo = () => {
+  const dispatch = useDispatch();
+  const todos = useSelector(getTodos);
+  const [searchText, setSearchText] = useState('');
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [isEditing, setIsEditing] = useState(false); 
+  const [deletingId, setDeletingId] = useState(null);
+  // const [isDeleting, setIsDeleting] = useState(false); //new
+  const defaultImage = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTx1dos8LThhwYE3fEciUQeNHD6_w4rL3FPTw&s";
+  const [taskDetails, setTaskDetails] = useState({
+    id: null,
+    title: '',
+    description: '',
+    dueDate: '',
+    image: defaultImage,
+  });
+
+  const columns = [
+    {
+      name: 'Name -',
+      selector: (row) => row.title,
+      sortable: true,
+      sortFunction: (rowA, rowB) => rowA.title.localeCompare(rowB.title),
+    },
+    {
+      name: 'Address',
+      selector: (row) => row.description,
+    },
+    {
+      name: 'Date of Joining -',
+      selector: (row) => row.dueDate,
+      sortable: true,
+      sortFunction: (rowA, rowB) => new Date(rowA.dueDate) - new Date(rowB.dueDate),
+    },
+    {
+      name: 'Image',
+      cell: (row) => (
+        <img
+          src={row.image || defaultImage}
+          alt="Task"
+          style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            objectFit: 'cover',
+          }}
+        />
+      ),
+    },
+    {
+      name: 'Actions',
+      cell: (row) => (
+        <>
+          <Button
+            variant="dark"
+            size="sm"
+            onClick={() => handleDeleteToast(row.id)}
+            className="me-4"
+            // disabled={deletingId === row.id}
+          >
+          {deletingId === row.id ?'Deleting...' :  'Delete' }
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => handleEdit(row)}
+          >
+            Edit
+          </Button>
+        </>
+      ),
+    },
+  ];
+
+  const filteredTodos = todos.filter((todo) =>
+    todo.title.toLowerCase().includes(searchText.toLowerCase()) ||
+    todo.description.toLowerCase().includes(searchText.toLowerCase()) ||
+    todo.dueDate.toLowerCase().includes(searchText.toLowerCase())
+  );
+
+  // const handleRemove = (id) => {
+  //   if (window.confirm('Are you sure you want to remove this task?')) {
+  //     dispatch(removeTodo(id));
+  //     toast.success('Task deleted successfully!', { position: 'top-right' });
+  //   }
+  // };
+  // const handleDeleteConfirmation = (id) => {
+  //   confirmAlert({
+  //     title: 'Confirm to delete',
+  //     message: 'Are you sure you want to delete this task?',
+  //     buttons: [
+  //       {
+  //         label: 'Yes',
+  //         onClick: () => {
+  //           dispatch(removeTodo(id));
+  //           toast.success('Task deleted successfully!', { position: 'top-right' });
+  //         },
+  //       },
+  //       {
+  //         label: 'No',
+  //         onClick: () => {
+  //           toast.info('Delete canceled!', { position: 'top-right' });
+  //         },
+  //       },
+  //     ],
+  //   });
+  // };
+
+  const handleDeleteToast = (id) => {
+    if (deletingId) return; 
+    setDeletingId(id);
+    // if (isDeleting || deletingId === id) return;  
+    // setIsDeleting(false);  
+    // setDeletingId(id);
+   const toastId = toast.info(
+      <div>
+        <p>Are you sure you want to delete this task?</p>
+        <div className="d-flex justify-content-end">
+          <Button
+            size="sm"
+            variant="danger"
+            className="me-2"
+            onClick={() => {
+              dispatch(removeTodo(id));
+              toast.dismiss(toastId);
+              toast.success('Deleted successfully!', { position: 'top-right' });
+              setDeletingId(); 
+              // setIsDeleting(false); 
+            }}
+          >
+            Confirm
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              toast.dismiss(toastId);
+              // setIsDeleting(false);
+              setDeletingId();
+              // toast.info('Delete canceled!', { position: 'top-right' });
+            }}
+          >
+            Cancel
+          </Button>
+        </div>
+      </div>,
+      {
+        position: 'top-right',
+        autoClose: false, 
+        closeOnClick: false, 
+        onClose: () => {
+          setDeletingId();
+          // setIsDeleting(false);
+        }
+        
+      }
+    );
+  };
+
+  const handleEdit = (task) => {
+    setIsEditing(true); 
+    setTaskDetails({
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      dueDate: task.dueDate,
+      image: task.image || defaultImage,
+    });
+    setShowSidebar(true);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setTaskDetails((prevState) => ({
+      ...prevState,
+      [name]: value,
+    }));
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setTaskDetails((prevState) => ({
+          ...prevState,
+          image: reader.result, 
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAddTask = () => {
+    if (taskDetails.title && taskDetails.description && taskDetails.dueDate) {
+      dispatch(addTodo(taskDetails));
+      toast.success('Details added successfully!', { position: 'top-right' });
+      resetSidebar();
+    } else {
+      toast.info('Please fill out all fields.');
+    }
+  };
+
+  const handleUpdateTask = () => {
+    if (taskDetails.title && taskDetails.description && taskDetails.dueDate) {
+      dispatch(updateTodo(taskDetails));
+      toast.info('Details updated successfully!', { position: 'top-right' });
+      resetSidebar();
+    } else {
+      toast.info('Please fill out all fields.');
+    }
+  };
+
+  const resetSidebar = () => {
+    setShowSidebar(false);
+    setIsEditing(false);
+    setTaskDetails({ id: null, title: '', description: '', dueDate: '', image: defaultImage });
+  };
+
+  return (
+    <div className={`container my-4 ${showSidebar ? 'blurred' : ''}`}>
+      <ToastContainer />
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h2>Task Listings</h2>
+
+        <InputGroup style={{ maxWidth: '350px' }}>
+          <Button
+            variant="success"
+            className="me-4"
+            onClick={() => {
+              setIsEditing(false);
+              setShowSidebar(true);
+            }}
+          >
+            Add Task
+          </Button>
+          <InputGroup.Text>
+            <FaSearch size={12} />
+          </InputGroup.Text>
+          <Form.Control
+            type="text"
+            placeholder="Search"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            size="sm"
+            className="form-control-sm"
+          />
+        </InputGroup>
+      </div>
+
+      <DataTable
+        columns={columns}
+        data={filteredTodos}
+        pagination
+        highlightOnHover
+        striped
+        responsive
+        customStyles={customStyles}
+        theme={theme}
+        defaultSortFieldId={1}
+        defaultSortAsc={true}
+      />
+
+      <Offcanvas show={showSidebar} onHide={resetSidebar} placement="end">
+        <Offcanvas.Header closeButton>
+          <Offcanvas.Title>
+            {isEditing ? 'Edit Your Details' : 'Add Task'}
+          </Offcanvas.Title>
+        </Offcanvas.Header>
+        <Offcanvas.Body>
+          <div className="text-center mb-4">
+            <img
+              src={taskDetails.image}
+              alt="Profile"
+              style={{
+                width: '120px',
+                height: '120px',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                marginBottom: '10px',
+              }}
+            />
+            <Form.Control
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              style={{ maxWidth: '200px', margin: '0 auto' }}
+            />
+          </div>
+          <Form>
+            <Form.Group className="mb-3">
+              <Form.Label>Name</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="Enter title"
+                name="title"
+                value={taskDetails.title}
+                onChange={handleInputChange}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Address</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                placeholder="Enter description"
+                name="description"
+                value={taskDetails.description}
+                onChange={handleInputChange}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Date of Joining</Form.Label>
+              <Form.Control
+                type="date"
+                name="dueDate"
+                value={taskDetails.dueDate}
+                onChange={handleInputChange}
+              />
+            </Form.Group>
+
+            <Button
+              variant="primary"
+              onClick={isEditing ? handleUpdateTask : handleAddTask}
+            >
+              {isEditing ? 'Update' : 'Add'}
+            </Button>
+          </Form>
+        </Offcanvas.Body>
+      </Offcanvas>
+    </div>
+  );
+};
+
+export default DataTableTodo;
+
+
+<ShimmerTable mode="light" row={7} col={5} border={1} borderColor={"#cbd5e1"} rounded={0.25} rowGap={16} colPadding={[10, 5, 10, 5]} />
+
+borderColor={"#cbd5e1"}
+
+
+
+<Form.Group className="mb-3">
+  <Form.Label>Name</Form.Label>
+  <Form.Control
+    type="text"
+    name="title"
+    value={taskDetails.title}
+    onChange={(e) => {
+      const value = e.target.value;
+      // Check if the input contains only alphabetic characters and spaces (optional)
+      if (/^[A-Za-z\s]*$/.test(value)) {
+        handleInputChange(e);
+      } else {
+        // Optional: You can set an error message or handle invalid input in another way
+        alert("Only alphabetic characters are allowed!");
+      }
+    }}
+  />
+</Form.Group>
